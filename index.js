@@ -29,13 +29,45 @@ async function run() {
       const reviewsCollection = client.db("bistroDB").collection("reviews");
     const cartCollection = client.db("bistroDB").collection("carts");
     const userCollection = client.db("bistroDB").collection("users");
-    // User Collection API.
-    
+// all user get apis
+    app.get('/users', async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result)
+    })
+    // User Collection API. and if login with google restric existing user 
+    // this will help from duplicate user data check Social login  also 
     app.post('/users', async (req, res) => {
       const user = req.body;
+      const query = { email: user.email }
+      const existingUser = await userCollection.findOne(query);
+      console.log(existingUser)
+      if (existingUser) {
+        return res.send({message: 'user already exist'})
+      }
       const result = await userCollection.insertOne(user)
       res.send(result)
     })
+
+    // user role change api 
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        },
+      }
+        const result = await userCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+
+    });
+    // app.delete('/users/admin/:id', async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: new ObjectId(id) };
+    //   const result = await cartCollection.deleteOne(query);
+    //   res.send(result);
+    // });
+
       // menu Collection API
       app.get('/menu', async (req, res) => {
           const result = await menuCollection.find().toArray();
