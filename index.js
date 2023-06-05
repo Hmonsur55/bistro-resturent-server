@@ -1,6 +1,7 @@
 const express = require("express")
 const app = express()
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -67,6 +68,31 @@ async function run() {
     //   const result = await cartCollection.deleteOne(query);
     //   res.send(result);
     // });
+    
+    // jwt token
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRETE, { expiresIn: '1h' });
+      res.send({token})
+    });
+    // varify backend 
+
+    const verifyJWT = (req, res, next) => {
+      const authorization = req.headers.authorization;
+      if (!authorization) {
+        return res.status(401).send({error: true, message : 'unauthorise access'})
+      }
+      // bearer token 
+      const token = authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRETE, (err, decoded) => {
+        if(err) {
+          return res.status(401).send({error: true, message : 'unauthorise access'})
+        }
+        req.decoded = decoded
+        next()
+      })
+}
+
 
       // menu Collection API
       app.get('/menu', async (req, res) => {
@@ -80,10 +106,15 @@ async function run() {
       })
 
     // cart collection  API
-    app.get('/carts', async (req, res) => {
+    app.get('/carts', verifyJWT, async (req, res) => {
       const email = req.query.email
       if (!email) {
         res.send ([])
+      }
+
+      const decodedEmail = req.decoded.email
+      if (email !== decodedEmail) {
+        return res.status(403).send({error: true, message : 'unauthorise access'})
       }
       const query = { email: email };
       const result = await cartCollection.find(query).toArray()
